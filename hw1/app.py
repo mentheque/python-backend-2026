@@ -15,6 +15,8 @@ async def application(
         receive: Корутина для получения сообщений от клиента
         send: Корутина для отправки сообщений клиенту
     """
+    if scope["type"] != "http":
+        return
 
     method = scope["method"]
     path = scope["path"]
