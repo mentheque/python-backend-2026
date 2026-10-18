@@ -15,6 +15,15 @@ async def application(
         receive: Корутина для получения сообщений от клиента
         send: Корутина для отправки сообщений клиенту
     """
+    if scope["type"] == "lifespan":
+        while True:
+            message = await receive()
+            if message["type"] == "lifespan.startup":
+                await send({"type": "lifespan.startup.complete"})
+            elif message["type"] == "lifespan.shutdown":
+                await send({"type": "lifespan.shutdown.complete"})
+                return
+
     if scope["type"] != "http":
         return
 
