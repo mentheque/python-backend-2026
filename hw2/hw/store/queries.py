@@ -59,7 +59,7 @@ def get_item_multiple(offset:int = 0,
         filters.append(lambda item: not item.deleted)
 
     matched = (
-        id, item_info
+        (id, item_info)
         for id, item_info in _itemData.items()
         if all(pred(item_info) for pred in filters)
     )
@@ -139,7 +139,7 @@ def get_cart_multiple(offset:int = 0,
 
     # can be generalised, will do later?
     matched = (
-        id, cart_info
+        (id, cart_info)
         for id in _cartData
         for cart_info in (_get_cart_info(id),)
         if all(pred(cart_info) for pred in filters)

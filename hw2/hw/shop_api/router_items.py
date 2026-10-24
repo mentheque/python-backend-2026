@@ -4,8 +4,8 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query, Response
 from pydantic import NonNegativeInt, PositiveFloat, PositiveInt
 
-from ..store import queries
-from ..store import MutateErrors
+from hw2.hw.store import queries
+from hw2.hw.store import MutateErrors
 
 from .contracts import (
     ItemResponse,
