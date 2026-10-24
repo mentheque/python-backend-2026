@@ -4,8 +4,8 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query, Response
 from pydantic import NonNegativeInt, PositiveFloat, PositiveInt
 
-from hw2.hw.store import queries
-from hw2.hw.store import ItemInsertionResult
+from store import queries
+from store import ItemInsertionResult
 
 from .contracts import (
     CartCreatedResponse,
