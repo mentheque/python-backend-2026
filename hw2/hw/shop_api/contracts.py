@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict
 
-from ..store import (
+from hw2.hw.store import (
     AddItemInfo,
     ItemEntity,
     ItemInfo,

@@ -34,4 +34,4 @@ class CartInfo:
 @dataclass(slots=True)
 class CartEntity:
     id: int
-    info: CartInfo
+    info: CartInfo = field(default_factory=CartInfo)
