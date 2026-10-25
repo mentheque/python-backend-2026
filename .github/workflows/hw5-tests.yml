@@ -1,6 +1,5 @@
 name: "HW5 Tests"
 
-# Запускаем тесты при изменении файлов в hw2/hw/
 on:
   pull_request:
     branches: [ main ]
@@ -15,21 +14,8 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.13", "3.14"]
-
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: shopuser
-          POSTGRES_PASSWORD: shoppass
-          POSTGRES_DB: shopdb
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U shopuser -d shopdb"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 5
+    # Явный таймаут, чтобы job не висел 6 часов по умолчанию
+    timeout-minutes: 15
 
     steps:
     - name: Checkout code
@@ -39,6 +25,38 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
+
+    - name: Pull PostgreSQL image with retry
+      run: |
+        for i in 1 2 3 4 5; do
+          docker pull postgres:16-alpine && break
+          echo "Pull attempt $i failed, retrying in 10s..."
+          sleep 10
+        done
+
+    - name: Start PostgreSQL
+      run: |
+        docker run -d \
+          --name postgres \
+          -e POSTGRES_USER=shopuser \
+          -e POSTGRES_PASSWORD=shoppass \
+          -e POSTGRES_DB=shopdb \
+          -p 5432:5432 \
+          postgres:16-alpine
+
+    - name: Wait for PostgreSQL to be ready
+      run: |
+        for i in $(seq 1 30); do
+          if docker exec postgres pg_isready -U shopuser -d shopdb >/dev/null 2>&1; then
+            echo "PostgreSQL is ready"
+            exit 0
+          fi
+          echo "Waiting for PostgreSQL... ($i/30)"
+          sleep 2
+        done
+        echo "PostgreSQL did not become ready in time"
+        docker logs postgres
+        exit 1
 
     - name: Install dependencies
       working-directory: hw2/hw
