@@ -1,8 +1,9 @@
 from http import HTTPStatus
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import NonNegativeInt, PositiveFloat, PositiveInt
+from sqlalchemy.orm import Session
 
 from store import queries
 from store import MutateErrors
@@ -12,6 +13,7 @@ from .contracts import (
     ItemRequest,
     PatchItemRequest,
 )
+from .session import get_session
 
 router = APIRouter(prefix="/item", tags=["item"])
 
@@ -23,10 +25,12 @@ async def get_item_list(
     min_price: Annotated[PositiveFloat | None, Query()] = None,
     max_price: Annotated[PositiveFloat | None, Query()] = None,
     show_deleted: Annotated[bool, Query()] = False,
+    session: Session = Depends(get_session),
 ) -> list[ItemResponse]:
     return [
         ItemResponse.from_entity(e)
         for e in queries.get_item_multiple(
+            session,
             offset=offset,
             limit=limit,
             min_price=min_price,
@@ -43,8 +47,11 @@ async def get_item_list(
         HTTPStatus.NOT_FOUND: {"description": "Item was not found"},
     },
 )
-async def get_item_by_id(id: int) -> ItemResponse:
-    entity = queries.get_item(id)
+async def get_item_by_id(
+    id: int,
+    session: Session = Depends(get_session),
+) -> ItemResponse:
+    entity = queries.get_item(session, id)
     if entity is None:
         raise HTTPException(
             HTTPStatus.NOT_FOUND,
@@ -57,8 +64,12 @@ async def get_item_by_id(id: int) -> ItemResponse:
     "",
     status_code=HTTPStatus.CREATED,
 )
-async def post_item(info: ItemRequest, response: Response) -> ItemResponse:
-    entity = queries.add_item(info.as_add_item_info())
+async def post_item(
+    info: ItemRequest,
+    response: Response,
+    session: Session = Depends(get_session),
+) -> ItemResponse:
+    entity = queries.add_item(session, info.as_add_item_info())
     response.headers["location"] = f"/item/{entity.id}"
     return ItemResponse.from_entity(entity)
 
@@ -71,8 +82,12 @@ async def post_item(info: ItemRequest, response: Response) -> ItemResponse:
         HTTPStatus.NOT_MODIFIED: {"description": "Item is deleted"},
     },
 )
-async def put_item(id: int, info: ItemRequest) -> ItemResponse:
-    result = queries.put_item(id, info.as_add_item_info())
+async def put_item(
+    id: int,
+    info: ItemRequest,
+    session: Session = Depends(get_session),
+) -> ItemResponse:
+    result = queries.put_item(session, id, info.as_add_item_info())
     if isinstance(result, MutateErrors):
         raise HTTPException(result.value, f"Failed to update /item/{id}: {result.name}")
     return ItemResponse.from_entity(result)
@@ -86,14 +101,21 @@ async def put_item(id: int, info: ItemRequest) -> ItemResponse:
         HTTPStatus.NOT_MODIFIED: {"description": "Item is deleted"},
     },
 )
-async def patch_item(id: int, info: PatchItemRequest) -> ItemResponse:
-    result = queries.patch_item(id, info.as_patch_item_info())
+async def patch_item(
+    id: int,
+    info: PatchItemRequest,
+    session: Session = Depends(get_session),
+) -> ItemResponse:
+    result = queries.patch_item(session, id, info.as_patch_item_info())
     if isinstance(result, MutateErrors):
         raise HTTPException(result.value, f"Failed to patch /item/{id}: {result.name}")
     return ItemResponse.from_entity(result)
 
 
 @router.delete("/{id}")
-async def delete_item(id: int) -> Response:
-    queries.delete_item(id)
+async def delete_item(
+    id: int,
+    session: Session = Depends(get_session),
+) -> Response:
+    queries.delete_item(session, id)
     return Response("")
