@@ -1,4 +1,5 @@
 from typing import Iterable, TypeVar, Callable
+from itertools import islice
 
 from sqlalchemy.orm import Session
 
@@ -155,9 +156,8 @@ def get_cart_multiple(
         CartMapper.to_domain(orm, lookup)
         for orm in session.query(CartOrm).order_by(CartOrm.id).all()
     )
-    for cart_info in matched:
-        if all(pred(cart_info.info) for pred in filters):
-            yield cart_info
+    filtered = (cart for cart in matched if all(pred(cart.info) for pred in filters))
+    yield from islice(filtered, offset, offset + limit)
 
 
 class ItemInsertionResult(Enum):
@@ -166,7 +166,7 @@ class ItemInsertionResult(Enum):
     ITEM_NOT_FOUND = 2
 
 
-def insert_item_to_cart(session: Session, cart_id: int, item_id: int) -> None | ItemInsertionResult:
+def insert_item_to_cart(session: Session, cart_id: int, item_id: int) -> ItemInsertionResult:
     cart = session.query(CartOrm).filter_by(id=cart_id).first()
     if cart is None:
         return ItemInsertionResult.CART_NOT_FOUND

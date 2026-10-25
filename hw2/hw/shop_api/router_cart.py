@@ -20,7 +20,16 @@ router = APIRouter(prefix="/cart", tags=["cart"])
 def _make_item_lookup(session: Session):
     def lookup(item_id: int):
         entity = queries.get_item(session, item_id)
-        return entity.info
+        if entity is not None:
+            return entity.info
+        # Item is soft-deleted (or absent) — still return its info so the cart
+        # can report it with available=False instead of raising AttributeError.
+        # A truly missing row cannot appear here thanks to the FK, but guard anyway.
+        from store.models import ItemOrm, ItemInfo
+        orm = session.query(ItemOrm).filter_by(id=item_id).first()
+        if orm is None:
+            return ItemInfo(name="<unknown>", price=0.0, deleted=True)
+        return ItemInfo(name=orm.name, price=orm.price, deleted=True)
     return lookup
 
 
